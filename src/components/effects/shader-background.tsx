@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -23,9 +23,10 @@ function ShaderGradient() {
   );
 
   useFrame((state) => {
-    uniforms.uTime.value = state.clock.elapsedTime;
-    uniforms.uMouse.value.x += (mouseRef.current.x - uniforms.uMouse.value.x) * 0.05;
-    uniforms.uMouse.value.y += (mouseRef.current.y - uniforms.uMouse.value.y) * 0.05;
+    // Slow the time step — reduces how often waves visibly change (cheaper perception-wise)
+    uniforms.uTime.value = state.clock.elapsedTime * 0.6;
+    uniforms.uMouse.value.x += (mouseRef.current.x - uniforms.uMouse.value.x) * 0.04;
+    uniforms.uMouse.value.y += (mouseRef.current.y - uniforms.uMouse.value.y) * 0.04;
   });
 
   const vertexShader = `
@@ -36,7 +37,9 @@ function ShaderGradient() {
     }
   `;
 
+  // Simplified fragment shader — removed one sin/cos wave and reduced precision
   const fragmentShader = `
+    precision mediump float;
     uniform float uTime;
     uniform vec2 uMouse;
     uniform vec2 uResolution;
@@ -44,38 +47,22 @@ function ShaderGradient() {
 
     void main() {
       vec2 uv = vUv;
-      float aspect = uResolution.x / uResolution.y;
       vec2 pos = uv * 2.0 - 1.0;
-      pos.x *= aspect;
 
-      // Mouse influence
-      vec2 mouse = uMouse * 2.0 - 1.0;
-      mouse.x *= aspect;
+      // Mouse influence (cheaper — no aspect correction needed at this scale)
+      float dist = distance(pos, uMouse * 2.0 - 1.0);
+      float mouseGlow = 0.015 / (dist + 0.02);
 
-      float dist = distance(pos, mouse);
-      float mouseGlow = 0.02 / (dist + 0.02);
-
-      // Animated waves
+      // Two waves instead of three
       float wave1 = sin(pos.x * 2.0 + uTime * 0.3) * 0.3;
       float wave2 = cos(pos.y * 1.8 + uTime * 0.2) * 0.3;
-      float wave3 = sin((pos.x + pos.y) * 1.5 + uTime * 0.4) * 0.2;
+      float pattern = wave1 + wave2;
 
-      float pattern = wave1 + wave2 + wave3;
-
-      // Colors
-      vec3 color1 = vec3(0.04, 0.04, 0.08); // deep navy-black
-      vec3 color2 = vec3(0.05, 0.02, 0.12); // deep violet-black
-      vec3 sakura = vec3(1.0, 0.42, 0.62);  // sakura pink
-      vec3 violet = vec3(0.49, 0.23, 0.93); // violet
-
+      vec3 color1 = vec3(0.04, 0.04, 0.08);
+      vec3 color2 = vec3(0.05, 0.02, 0.12);
       vec3 baseColor = mix(color1, color2, pattern * 0.5 + 0.5);
 
-      // Add mouse glow
-      baseColor += mouseGlow * vec3(0.49, 0.23, 0.93) * 0.08;
-
-      // Subtle sakura tint
-      float sakuraTint = sin(uTime * 0.1 + pos.x * 3.0) * 0.5 + 0.5;
-      baseColor += sakura * sakuraTint * 0.02;
+      baseColor += mouseGlow * vec3(0.49, 0.23, 0.93) * 0.06;
 
       // Vignette
       float vignette = 1.0 - length(pos * 0.6);
@@ -98,12 +85,33 @@ function ShaderGradient() {
 }
 
 export default function ShaderBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Pause rendering when the tab is hidden to save GPU on background tabs
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleVisibility = () => {
+      el.style.visibility = document.hidden ? "hidden" : "visible";
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  // Don't render at all for users who prefer reduced motion
+  if (typeof window !== "undefined") {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) return null;
+  }
+
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
+    <div ref={containerRef} className="fixed inset-0 z-0 pointer-events-none">
       <Canvas
         camera={{ position: [0, 0, 1] }}
-        dpr={[1, 2]}
-        gl={{ antialias: false, alpha: true }}
+        // Cap DPR at 1 — retina resolution doubles GPU pixel fill work for no visible gain here
+        dpr={1}
+        gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
+        frameloop="always"
       >
         <ShaderGradient />
       </Canvas>

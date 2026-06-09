@@ -32,14 +32,12 @@ export default function Hero() {
     []
   );
 
-  // Twinkling "kira" sparkles
+  // Twinkling "kira" sparkles — reduced to 3 to cut down concurrent Framer Motion loops
   const sparkles = useMemo(
     () =>
       [
         { top: "18%", left: "12%", size: 18, delay: 0 },
-        { top: "30%", left: "40%", size: 12, delay: 1.4 },
         { top: "68%", left: "22%", size: 14, delay: 0.7 },
-        { top: "75%", left: "52%", size: 10, delay: 2.1 },
         { top: "44%", left: "8%", size: 11, delay: 1.1 },
       ] as const,
     []
@@ -52,15 +50,14 @@ export default function Hero() {
     >
       {/* Ambient gradient glows — give the dark canvas depth and color */}
       <div className="pointer-events-none absolute inset-0 z-0">
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        {/* Single combined glow instead of two separate infinite-looping motion.divs */}
+        <div
           className="absolute -top-32 -left-32 h-112 w-md rounded-full bg-[#FF6FAE]/20 blur-[120px]"
+          style={{ willChange: "auto" }}
         />
-        <motion.div
-          animate={{ scale: [1.1, 1, 1.1], opacity: [0.4, 0.7, 0.4] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        <div
           className="absolute bottom-0 left-1/4 h-96 w-96 rounded-full bg-[#7C5CFF]/20 blur-[120px]"
+          style={{ willChange: "auto" }}
         />
       </div>
 
@@ -150,14 +147,16 @@ export default function Hero() {
         animate={{ opacity: 1 }}
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         className="absolute top-0 right-0 h-full w-full lg:w-[60%] z-0"
+        style={{ willChange: "opacity" }}
       >
-        {/* Parallax image layer */}
+        {/* Parallax image layer — will-change: transform lets browser promote to own layer */}
         <motion.div
           className="absolute -top-16 -bottom-16 left-0 right-0 bg-cover bg-center"
           style={{
             y: yParallax,
             backgroundImage: `url('/hero-image.png')`,
             backgroundPosition: "center 20%",
+            willChange: "transform",
           }}
         />
         {/* Left-edge fade so the headline stays legible over the art */}
@@ -201,7 +200,7 @@ export default function Hero() {
 
       {/* Main Content Container — block-centered (mirrors Latest Posts), vertical-centered via flex */}
       <motion.div
-        style={{ y: yContent, opacity: contentOpacity }}
+        style={{ y: yContent, opacity: contentOpacity, willChange: "transform, opacity" }}
         className="relative z-10 mx-auto max-w-7xl px-6 md:px-12 lg:px-24 min-h-screen flex items-center"
       >
 
@@ -251,14 +250,12 @@ export default function Hero() {
                 感情。
               </span>
               <motion.span
-                className="mt-1 bg-clip-text text-transparent [text-shadow:0_0_40px_rgba(255,111,174,0.35)]"
+                className="mt-1 bg-clip-text text-transparent [text-shadow:0_0_40px_rgba(255,111,174,0.35)] animate-gradient-shift"
                 style={{
                   backgroundImage:
                     "linear-gradient(110deg, #FF6FAE 0%, #ff8fc1 25%, #fff 45%, #ff8fc1 60%, #7C5CFF 100%)",
                   backgroundSize: "200% 100%",
                 }}
-                animate={{ backgroundPosition: ["200% 0%", "-200% 0%"] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
               >
                 アニメ。
               </motion.span>

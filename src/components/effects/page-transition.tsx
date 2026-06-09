@@ -15,13 +15,15 @@ export default function PageTransition({ children }: PageTransitionProps) {
     <AnimatePresence mode="wait">
       <motion.div
         key={pathname}
-        initial={{ opacity: 0, filter: "blur(8px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
-        exit={{ opacity: 0, filter: "blur(8px)" }}
+        // Opacity-only — avoids the expensive CSS filter: blur() repaint on every frame
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={{
-          duration: 0.5,
-          ease: [0.16, 1, 0.3, 1],
+          duration: 0.35,
+          ease: "easeInOut",
         }}
+        style={{ willChange: "opacity" }}
       >
         {children}
       </motion.div>

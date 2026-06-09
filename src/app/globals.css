@@ -47,8 +47,8 @@
 }
 
 @keyframes glow {
-  from { box-shadow: 0 0 20px rgba(124, 58, 237, 0.3); }
-  to { box-shadow: 0 0 40px rgba(124, 58, 237, 0.6); }
+  from { opacity: 0.6; }
+  to { opacity: 1; }
 }
 
 @keyframes sakura-fall {
@@ -230,4 +230,15 @@ body {
 
 .animate-marquee {
   animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 200% 0%; }
+  100% { background-position: -200% 0%; }
+}
+
+.animate-gradient-shift {
+  animation: gradient-shift 6s linear infinite;
+  background-size: 200% 100%;
 }

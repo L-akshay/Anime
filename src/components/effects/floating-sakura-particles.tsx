@@ -17,8 +17,13 @@ export default function FloatingSakuraParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number>(0);
+  const pausedRef = useRef(false);
 
   useEffect(() => {
+    // Respect reduced-motion preference
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -30,10 +35,16 @@ export default function FloatingSakuraParticles() {
       canvas.height = window.innerHeight;
     };
     resize();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", resize, { passive: true });
 
-    // Initialize particles
-    const particleCount = Math.min(15, Math.floor(window.innerWidth / 100));
+    // Pause RAF when tab is not visible — no point animating hidden content
+    const handleVisibility = () => {
+      pausedRef.current = document.hidden;
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // Fewer particles on small viewports for perf
+    const particleCount = Math.min(12, Math.floor(window.innerWidth / 120));
     particlesRef.current = Array.from({ length: particleCount }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
@@ -51,7 +62,6 @@ export default function FloatingSakuraParticles() {
       ctx.rotate((p.rotation * Math.PI) / 180);
       ctx.globalAlpha = p.opacity;
 
-      // Draw a simple 5-petal sakura shape
       const size = p.size;
       ctx.fillStyle = "#ff6b9d";
 
@@ -63,7 +73,6 @@ export default function FloatingSakuraParticles() {
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
 
-        // Inner curve
         const innerAngle = angle + 36 * (Math.PI / 180);
         const innerX = Math.cos(innerAngle) * size * 0.4;
         const innerY = Math.sin(innerAngle) * size * 0.4;
@@ -76,6 +85,11 @@ export default function FloatingSakuraParticles() {
     };
 
     const animate = () => {
+      if (pausedRef.current) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       particlesRef.current.forEach((p) => {
@@ -83,7 +97,6 @@ export default function FloatingSakuraParticles() {
         p.y += p.speedY;
         p.rotation += p.rotationSpeed;
 
-        // Wrap around
         if (p.y > canvas.height + 20) {
           p.y = -20;
           p.x = Math.random() * canvas.width;
@@ -101,6 +114,7 @@ export default function FloatingSakuraParticles() {
 
     return () => {
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibility);
       cancelAnimationFrame(animationFrameRef.current);
     };
   }, []);
